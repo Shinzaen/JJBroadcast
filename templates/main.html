@@ -1,0 +1,59 @@
+<!-- main.html -->
+
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <link rel="stylesheet" href="/static/main.css">
+
+    <title>JJ Broadcast</title>
+</head>
+
+<body>
+
+    <header>
+        <a href="/"> <!-- 로고 클릭 시 main.html로 이동 -->
+            <img id="icon" src="static/꾀꼬리로고.png" alt="로고">
+        </a>
+        <h1> JJ Broadcast </h1>
+        <button id="broadcastButton" onclick="showPopup()">
+            <img src="static/broadcast.png" alt="방송 송출">
+        </button>
+    </header>
+
+    <div id="body">
+        <!-- 네모칸들 -->
+        {% for broadcast in broadcasts %}
+        <div id="broadcast_{{ broadcast.id }}" class="cell"
+            onclick="showBroadcastDetails('{{ broadcast.content }}', '{{ broadcast.nickname }}', '{{ broadcast.imagePath }}')">
+            <a href="{{ broadcast.url }}" target="_blank"> <!-- 고유한 URL을 링크로 추가 -->
+                {{ broadcast.nickname }}
+                <!-- 메인 페이지에 이미지 표시 엘리먼트 -->
+                <img class="broadcast-image" src="{{ url_for('uploaded_file', filename=broadcast.imagePath) }}"
+                    alt="Broadcast Image">
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- 팝업 창 -->
+    <div id="popup">
+        <input type="text" id="nicknameInput" placeholder="닉네임 입력">
+        <textarea id="broadcastContentInput" placeholder="방송 제목 입력" rows="4"></textarea>
+        <button id="startBroadcastButton" onclick="startBroadcastFromPopup()">방송 시작</button>
+        <button id="closeBroadcastButton" onclick="closeBroadcastFromPopup()">닫기</button>
+        <!-- broadcastUrlElement 추가 -->
+        <div id="broadcastUrlElement"></div>
+    </div>
+
+
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+
+</body>
+
+</html>

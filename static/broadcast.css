@@ -1,0 +1,425 @@
+html {
+    min-height: 100%;
+    display: grid;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    overflow: auto;
+    padding: 0;
+    display: grid;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(to bottom left, #C0CFB2 10%, #8BA989 80%);
+    color: #fff;
+    overflow: hidden;
+    padding-top: 50px;
+}
+
+/* 이미지 선택과 관련된 스타일
+#imageInput {
+    display: none;
+} */
+
+#imageUploadForm {
+    margin-top: 10px;
+    padding: 10px;
+    cursor: pointer;
+    background-color: #0f4722;
+    /* 초록색 배경색 */
+    color: #ffffff;
+    /* 흰색 텍스트 */
+    border: none;
+    border-radius: 5px;
+    /* 모서리 둥글게 */
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+#previewImage {
+    max-width: 100%;
+    margin-top: 10px;
+    display: none;
+    border-radius: 5px;
+    /* 이미지에 모서리를 둥글게 만듭니다. */
+}
+
+#player {
+    background: #FFFFFF;
+    position: relative;
+    margin: auto;
+    width: 300px;
+    height: 300px;
+    overflow: hidden;
+    border-radius: 5px;
+    box-shadow: 5px 5px 15px rgba(54, 79, 60, 0.4);
+    -webkit-transition: all 0.5s ease-in-out;
+    transition: all 0.5s ease-in-out;
+}
+
+.album {
+    background-repeat: no-repeat;
+    background-size: cover;
+    width: 100%;
+    height: 100%;
+    border-radius: 5px;
+    position: absolute;
+}
+
+.heart {
+    position: absolute;
+    right: 0;
+    color: #FFFFFF;
+    margin: 10px;
+    transition: all 0.4s ease;
+}
+
+.clicked {
+    color: #49654D;
+    transform: scale(1.2);
+    transition: all 0.4s ease;
+}
+
+.info {
+    height: 115px;
+    width: 100%;
+    position: absolute;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.85);
+    transform: translateY(35px);
+    transition: all 0.5s ease-in-out;
+}
+
+.up {
+    transform: translateY(0px);
+}
+
+#player:hover .controls {
+    opacity: 1;
+    visibility: visible;
+}
+
+#timerContainer {
+    height: 5px;
+    margin: 10px 0;
+    background: lighten(#C0CFB2, 5%);
+    border-radius: 10px;
+    font-family: 'Questrial', sans-serif;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+#timerContainer .fill {
+    background-color: #8BA989;
+    height: 100%;
+    border-radius: 10px;
+    width: 0;
+    transition: width 0.2s;
+}
+
+#timerContainer .time--current,
+#timerContainer .time--total {
+    color: #364F3C !important;
+    font-size: 10px;
+}
+
+#timerContainer .time--current {
+    margin-left: 10px;
+}
+
+#timerContainer .time--total {
+    margin-right: 10px;
+}
+
+#timerContainer .time--current {
+    color: #0f4722 !important;
+    /* 진한 초록색으로 변경 */
+    margin-left: 10px;
+}
+
+#timer {
+    color: #002c04;
+    /* 원하는 색상으로 변경하세요. */
+    text-align: center;
+}
+
+#broadcastTime {
+    color: #002c04;
+    /* 방송 시간의 색상 설정, 원하는 색상으로 변경하세요. */
+    font-weight: bold;
+    /* 글자를 두껍게 표시 (선택사항) */
+    font-size: 1.2em;
+    /* 글자 크기 조정 (선택사항) */
+    display: inline-block;
+}
+
+/* 음소거 css */
+.volume {
+    position: absolute;
+    top: calc(50% + 20px);
+    /* 변경된 부분: 기존 위치에서 20px 아래로 이동 */
+    left: 50%;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+
+#player:hover .volume {
+    opacity: 1;
+}
+
+.volume img {
+    width: 100%;
+    /* 이미지를 100%로 설정 */
+    height: auto;
+    /* 높이를 자동으로 조절 */
+}
+
+.volume:hover img {
+    filter: brightness(1.2);
+}
+
+.progress-bar {
+    height: 5px;
+    width: 73%;
+    margin: 6% auto;
+    background: lighten(#C0CFB2, 5%);
+    border-radius: 10px;
+    font-family: 'Questrial', sans-serif;
+}
+
+.fill {
+    background-color: #8BA989;
+    width: 35%;
+    height: 0.3rem;
+    border-radius: 2px;
+}
+
+.time--current,
+.time--total {
+    color: #364F3C;
+    font-size: 10px;
+    position: absolute;
+    margin-top: -2px;
+}
+
+.time--current {
+    left: 15px;
+}
+
+.time--total {
+    right: 15px;
+}
+
+.currently-playing {
+    text-align: center;
+    margin-top: -3px;
+}
+
+.titlename,
+.artist-name {
+    font-family: 'Questrial', sans-serif;
+    text-transform: uppercase;
+    margin: 0;
+    z-index: 2;
+    position: relative;
+}
+
+.titlename {
+    font-size: 0.8em;
+    letter-spacing: 3px;
+    color: #0f4722;
+    /* 진한 초록색으로 변경 */
+}
+
+.artist-name {
+    font-size: 0.6em;
+    letter-spacing: 1.5px;
+    color: #0f4722;
+    /* 진한 초록색으로 변경 */
+    margin-top: 5px;
+}
+
+.controls {
+    position: relative;
+    z-index: 1;
+    display: none;
+    align-items: center;
+    font-size: 0.8em;
+    justify-content: center;
+    color: #8BA989;
+}
+
+.controls .volume {
+    top: 60%;
+    /* 적절한 위치로 조정 (픽셀이 아닌 퍼센트 사용 권장) */
+    transform: translate(-50%, -50%);
+    position: absolute;
+}
+
+#player:hover .controls {
+    display: flex;
+}
+
+
+
+header {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #f7cccc;
+    z-index: 1000;
+}
+
+#icon {
+    padding-right: 30px;
+}
+
+#endButton {
+    padding: 20px;
+    border: none;
+    cursor: pointer;
+    padding: 0px;
+    background-color: #f7cccc;
+}
+
+#body1 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    padding: 20px;
+}
+
+#body2 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    padding: 20px;
+}
+
+#videoContainer {
+    width: 100%;
+    max-width: 800px;
+    margin-bottom: 20px;
+}
+
+#chatContainer {
+    width: 100%;
+    max-width: 800px;
+    overflow-y: auto;
+    max-height: 300px;
+    border: 1px solid #333;
+    padding: 10px;
+    margin-bottom: 10px;
+    margin-top: 20px;
+}
+
+#inputContainer {
+    display: flex;
+    width: 100%;
+    max-width: 800px;
+}
+
+#nickInput {
+    flex: 1;
+    padding: 10px;
+    box-sizing: border-box;
+    margin-right: 10px;
+}
+
+#chatInput {
+    flex: 2;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+#sendButton {
+    width: 100%;
+    max-width: 800px;
+    padding: 10px;
+    background-color: #f7cccc;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+/*종료버튼 눌렀을때 팝업창*/
+#popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#popup {
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    color: #243126
+}
+
+#popup h2 {
+    margin-bottom: 20px;
+}
+
+#popup button {
+    background-color: #4caf50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    margin: 0 10px;
+}
+
+#popup button.no {
+    background-color: #f44336;
+}
+
+#audioPlayer {
+    display: none;
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.5em;
+    text-transform: uppercase;
+    padding: 10px;
+    color: #243126;
+    letter-spacing: 3px;
+    font-family: 'Arial', sans-serif;
+}
+
+footer a {
+    color: #ffffff;
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: #242d25;
+}

@@ -1,0 +1,80 @@
+/* main.css */
+
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 50;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #f5d2d2c7;
+}
+
+#icon {
+    padding-right: 10px;
+}
+
+#broadcastButton {
+    padding: 10px;
+    /* color: rgba(251, 213, 213, 0.381); */
+    border: none;
+    cursor: pointer;
+    padding: 0px;
+    background-color: #f5d2d2c7;
+}
+
+#body {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    /* 반응형 그리드 */
+    gap: 30px;
+    padding: 100px;
+}
+
+.cell {
+    text-align: center;
+    padding: 55px;
+    background-color: #e0e0e0;
+    border: 1px solid #ccc;
+}
+
+/* 팝업 스타일 */
+#popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    z-index: 1;
+}
+
+#nicknameInput,
+#broadcastContentInput {
+    padding: 15px;
+    margin-bottom: 20px;
+    width: 80%;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+#startBroadcastButton {
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+#closeBroadcastButton {
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}

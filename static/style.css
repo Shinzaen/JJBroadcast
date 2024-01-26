@@ -1,0 +1,51 @@
+/* 메인 컨테이너 */
+.container {
+    margin-top: 8vh; /* 추가: 헤더 높이만큼 여백 추가 */
+    padding: 20px;
+}
+
+.tit_select {
+    text-align: center;
+    font-size: 30px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.select_lyaout {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin: 5% 2%; /* 공백 추가 */
+}
+
+.select_lyaout .box {
+    width: calc(25% - 2%); /* 4개의 박스가 나란히 오려면 100% / 4 - 간격(2%) */
+    margin-bottom: 2%;
+}
+
+.select_lyaout .box input {
+    display: none;
+}
+
+.select_lyaout .box label {
+    display: block;
+    height: 30vh;
+    background-color: #ddd;
+    border: 1px solid #000;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.select_lyaout input:checked + label {
+    border: 2px solid rgba(138, 153, 235, 1);
+    color: #4361ff;
+}
+
+/* 반응형 스타일 추가 */
+@media only screen and (max-width: 768px) {
+    .select_lyaout .box {
+        width: calc(50% - 2%);
+    }
+}
