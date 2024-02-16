@@ -13,8 +13,34 @@ window.onload = function () {
         document.getElementById("nickname").value = storedNickname;
     }
 
+    initializeBroadcast();
     fetchNicknameAndTitle();
 };
+
+
+// 방송 초기화 및 WebRTC 피어 생성
+function initializeBroadcast() {
+    // 방송 송출자가 WebRTC 연결을 초기화
+    var peer = new SimplePeer({ initiator: true, trickle: false, stream: audioStream });
+
+    peer.on('signal', data => {
+        // 시그널링 데이터를 서버에 전송
+        broSocket.emit('webrtc_signal', data);
+    });
+
+    // 다른 피어로부터 시그널링 데이터를 받았을 때
+    broSocket.on('webrtc_signal', data => {
+        peer.signal(data);
+    });
+
+    // 오디오 스트림을 가져오기
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(stream => {
+            peer.addStream(stream); // 스트림을 WebRTC 피어에 추가
+            document.getElementById('audioPlayer').srcObject = stream;
+        })
+        .catch(error => console.error('Error accessing microphone:', error));
+}
 
 // 방송 URL을 업데이트하는 함수
 function updateBroadcastUrl(url) {
@@ -56,13 +82,8 @@ broSocket.on('update_broadcast_info', function (data) {
 
 // 방송 정보 업데이트 함수
 function updateBroadcastInfo(content, nickname) {
-    // 방송 정보를 표시하는 엘리먼트에 접근
-    var titleElement = document.querySelector('#broadcastInfo1 .titlename');
-    var artistElement = document.querySelector('#broadcastInfo1 .artist-name');
-
-    // 엘리먼트의 내용을 업데이트
-    titleElement.textContent = content;
-    artistElement.textContent = nickname;
+    document.querySelector('#broadcastInfo1 .titlename').textContent = content;
+    document.querySelector('#broadcastInfo1 .artist-name').textContent = nickname;
 }
 
 // 서버로부터 닉네임과 제목을 가져와서 화면에 표시하는 함수
@@ -263,10 +284,10 @@ function getAudioStream() {
 navigator.mediaDevices.getUserMedia({ audio: true })
     .then(function (stream) {
         // 서버로 오디오 스트림을 전달하기 위해 Socket.IO를 사용합니다.
-        var socket = io.connect('http://localhost:5000'); // 서버 주소와 포트번호에 맞게 수정해주세요.
+        var brosocket = io.connect('http://localhost:5000'); // 서버 주소와 포트번호에 맞게 수정해주세요.
 
         // 오디오 스트림을 서버로 전송합니다.
-        socket.emit('broadcast_audio', stream);
+        brosocket.emit('broadcast_audio', stream);
     })
     .catch(function (error) {
         console.error('오디오 스트림을 가져오는 중에 에러가 발생했습니다:', error);

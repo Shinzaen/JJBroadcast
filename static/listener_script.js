@@ -22,6 +22,8 @@ window.onload = function () {
     if (storedNickname) {
         document.getElementById("nickInput").value = storedNickname;
     }
+    
+    initializeBroadcast();
 
     // 페이지 로드 시 서버로부터 닉네임과 제목 가져오기
     fetchNicknameAndTitle();
@@ -30,16 +32,35 @@ window.onload = function () {
     startTimer();
 };
 
+// 방송 초기화 및 WebRTC 피어 생성
+function initializeBroadcast() {
+    // 방송 송출자가 WebRTC 연결을 초기화
+    var peer = new SimplePeer({ initiator: true, trickle: false, stream: audioStream });
+
+    peer.on('signal', data => {
+        // 시그널링 데이터를 서버에 전송
+        liSocket.emit('webrtc_signal', data);
+    });
+
+    // 다른 피어로부터 시그널링 데이터를 받았을 때
+    liSocket.on('webrtc_signal', data => {
+        peer.signal(data);
+    });
+
+    // 오디오 스트림을 가져오기
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(stream => {
+            peer.addStream(stream); // 스트림을 WebRTC 피어에 추가
+            document.getElementById('audioPlayer').srcObject = stream;
+        })
+        .catch(error => console.error('Error accessing microphone:', error));
+}
+
 
 // 방송 정보 업데이트 함수
 function updateBroadcastInfo(content, nickname) {
-    // 방송 정보를 표시하는 엘리먼트에 접근
-    var titleElements = document.querySelectorAll('#broadcastInfo1 .titlename');
-    var artistElements = document.querySelectorAll('#broadcastInfo1 .artist-name');
-
-    // 엘리먼트의 내용을 업데이트
-    titleElement.textContent = content;
-    artistElement.textContent = nickname;
+    document.querySelector('#broadcastInfo1 .titlename').textContent = content;
+    document.querySelector('#broadcastInfo1 .artist-name').textContent = nickname;
 }
 
 // Socket.IO 이벤트 핸들러 (서버로부터 방송 정보를 받아와서 동적으로 표시)
@@ -56,7 +77,7 @@ liSocket.on('play_broadcast', (audioStream) => {
     audioPlayer.play();
 
     // 방송 송출자로부터 음성 스트림을 수신하고 재생하는 코드
-    socket.on('broadcast_audio', function (data) {
+    lisocket.on('broadcast_audio', function (data) {
         var audioPlayer = document.getElementById('audioPlayer');
 
         // 음성 스트림을 오디오 플레이어에 설정

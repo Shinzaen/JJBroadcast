@@ -1,14 +1,13 @@
-# app.py
-
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_from_directory
 from flask_socketio import SocketIO, emit
 import os
 import threading
+from google.cloud import speech
 from google.cloud import speech_v1p1beta1 as speech
+from google.cloud.speech_v1 import types
 from pydub import AudioSegment
 from pydub.playback import play
 import numpy as np
-import io
 import speech_recognition as sr
 from dotenv import load_dotenv
 import uuid
@@ -16,6 +15,13 @@ from flask_cors import CORS
 import random
 import string
 from werkzeug.utils import secure_filename
+from google.cloud import speech_v1
+from transformers import pipeline
+import pyaudio
+from tensorflow.keras.models import load_model
+import queue
+import threading
+
 
 def generate_random_broadcast_id(length=8):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
@@ -23,7 +29,7 @@ def generate_random_broadcast_id(length=8):
 # .env 파일을 현재 환경 변수로 로드
 load_dotenv(verbose=True)
 
-app = Flask(__name__, static_url_path='/static', static_folder='C:/Users/SBA/recproject/static')
+app = Flask(__name__, static_url_path='/static', static_folder='/home/jupyter/recproject/static')
 app.secret_key = '2AZSMss3p5QPbcY2hBsJ'
 socketio = SocketIO(app, cors_allowed_origins="*")
 CORS(app, resources={r"/": {"origins": "http://localhost:5000"}})  # CORS 활성화
@@ -33,7 +39,8 @@ CORS(app, resources={r"/": {"origins": "http://localhost:5000"}})  # CORS 활성
 broadcasts = {}
 # 방송 목록을 저장할 변수
 broadcast_list = []
-
+# 학습모델 불러오기
+model = load_model('model/jj-model.h5')
 
 # url처리 리스너가 목록박스를 누르면 방송으로 들어올 수 있게
 
@@ -48,23 +55,7 @@ def start_broadcast_common():
     # 고유한 ID 생성
     broadcast_id = str(uuid.uuid4())
 
-    # # 이미지를 업로드하고 URL 생성
-    # if 'image' not in request.files:
-    #     return jsonify({'error': 'No image part'})
-
-    # image_file = request.files['image']
-
-    # if image_file.filename == '':
-    #     return jsonify({'error': 'No selected image file'})
-
-    # filename = secure_filename(image_file.filename)
-    # image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    # image_file.save(image_path)
-    
-    # # 이미지 URL 생성
-    # image_url = url_for('uploaded_file', filename=filename, _external=True)
     image_url = None  # 이미지가 필요 없는 경우에는 image_url을 None으로 설정합니다.
-
 
     # 동적으로 생성된 URL
     broadcast_url = url_for('broadcast_page', broadcast_id=broadcast_id, _external=True)
@@ -95,15 +86,6 @@ def start_broadcast_common():
     # 클라이언트에게 생성된 URL을 반환
     return jsonify({'broadcastUrl': broadcast_url, 'imagePath': image_url})
 
-@app.route('/start_broadcast', methods=['POST', 'GET'])
-def start_broadcast():
-    if request.method == 'POST':
-        return start_broadcast_common()
-    # 'GET' 요청의 경우에는 리디렉션 없이 아무 동작도 하지 않습니다.
-    return jsonify({'message': 'Nothing to do for GET requests.'})
-
-
-
 # 방송 시작 시
 @socketio.on('start_broadcast')
 def handle_start_broadcast(data):
@@ -115,7 +97,6 @@ def handle_start_broadcast(data):
 
     # 클라이언트에게 방송 정보 전달
     emit('broadcast_info', {'id': broadcast_id, 'content': broadcast_content, 'nickname': nickname}, broadcast=True)
-
 
 @app.route('/broadcast/<broadcast_id>')
 def listen_broadcast(broadcast_id):
@@ -139,30 +120,6 @@ def broadcast_page():
     broadcast_data = {'content': '제 목', 'nickname': '닉네임'}
     return render_template('broadcast.html', broadcast=broadcast_data)
 
-# static/audio 폴더에 저장
-app.config['AUDIO_UPLOAD_FOLDER'] = "static/audio"
-
-#파일 이름에 대한 보안을 위해 secure_filename() 함수를 사용, convert_and_save_audio(file) 함수는 업로드된 오디오 파일의 저장 경로를 반환하므로, 이 경로는 /upload_audio 라우트에서 사용
-def convert_and_save_audio(file):
-    filename = secure_filename(file.filename)
-    file_path = os.path.join(app.config['AUDIO_UPLOAD_FOLDER'], filename)
-    file.save(file_path)
-    return file_path
-
-# 오디오 파일 업로드 처리 라우트
-@app.route('/upload_audio', methods=['POST'])
-def upload_audio_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'})
-
-    file = request.files['file']
-
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'})
-
-    if file:
-        wav_file_path = convert_and_save_audio(file)
-        return jsonify({'file_path': wav_file_path, 'broadcastId': None})  # 'broadcastId'를 반환하지 않음
 
 # 이미지 저장 디렉토리 설정
 app.config['UPLOAD_FOLDER'] = "static/images"
@@ -192,24 +149,18 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
+# 오디오 스트리밍을 위한 설정
+RATE = 44100
+CHUNK = int(RATE / 10)  # 100ms
 
+# Google Cloud Speech-to-Text 클라이언트 생성
+client = speech.SpeechClient()
 
-# 파일 변환
-def convert_and_save_audio(file):
-    unique_filename = str(uuid.uuid4())
-    wav_file_path = os.path.join(app.config['AUDIO_UPLOAD_FOLDER'], unique_filename + '.wav')  # 수정된 부분
-
-    # 파일을 WAV 형식으로 변환하고 저장
-    audio = AudioSegment.from_file(file)
-    audio.export(wav_file_path, format="wav")
-
-    return wav_file_path
-
-# 삐소리 생성 함수
+# 삐 소리를 생성하는 함수
 def create_beep(duration):
-    sps = 44100
-    freq_hz = 1000.0
-    vol = 0.5
+    sps = 44100  # 샘플링 주파수
+    freq_hz = 1000.0  # 삐소리 주파수
+    vol = 0.5  # 볼륨
 
     esm = np.arange(duration / 1000 * sps)
     wf = np.sin(2 * np.pi * esm * freq_hz / sps)
@@ -225,66 +176,96 @@ def create_beep(duration):
 
     return beep
 
-# 욕설 감지 및 삐처리 함수
-def detect_and_play_beep(socketio, text, profanity_list):
-    if any(profanity in text for profanity in profanity_list):
-        print("욕설이 감지되었습니다. 삐 소리를 재생합니다.")
-        beep_duration = len(text.split()) * 200  # 단어의 길이에 따라 삐 소리의 길이 동적 조절
-        beep = create_beep(duration=beep_duration)
-        play(beep)
-        socketio.emit('beep_audio', {'audio_data': beep.raw_data})  # 클라이언트에게 삐처리된 소리 전송
+# 오디오를 스트리밍하고, 이를 큐에 저장하는 함수
+def listen_and_transcribe(socketio, broadcast_id, q):
+    audio_interface = pyaudio.PyAudio()
+    audio_stream = audio_interface.open(rate=RATE, channels=1, format=pyaudio.paInt16, input=True, frames_per_buffer=CHUNK)
 
-# 마이크에서 실시간으로 음성을 감지하고 처리하는 함수
-def profanity_beep_listener(socketio, profanity_list):
-    recognizer = sr.Recognizer()
+    while True:
+        data = audio_stream.read(CHUNK)
+        q.put(data)
 
-    with sr.Microphone() as source:
-        print("방송 중... 욕설이 나오면 삐 소리가 재생됩니다.")
-        while True:
-            try:
-                audio = recognizer.listen(source, timeout=None)
-                content = audio.frame_data
+        # 리스너에게 오디오 데이터 전달
+        socketio.emit('play_audio', {'broadcastId': broadcast_id, 'audioData': data}, namespace='/listener', broadcast=True)
 
-                beep = create_beep(duration=len(content))
+# 큐에서 오디오 데이터를 가져와서 이를 텍스트로 변환하고, 욕설을 감지하는 함수
+def transcribe_and_check(socketio, broadcast_id, q):
+    config = speech.RecognitionConfig(
+        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+        sample_rate_hertz=RATE,
+        language_code="ko-KR,en-US",
+        enable_word_time_offsets=True  # 단어의 타임스탬프를 포함하도록 설정
+    )
+    streaming_config = speech.StreamingRecognitionConfig(config=config, interim_results=True)
 
-                client = speech.SpeechClient()
-                config = {
-                    "language_code": ["ko-KR", "en-US"],
-                    "sample_rate_hertz": 44100,
-                    "encoding": speech.RecognitionConfig.AudioEncoding.LINEAR16,
-                    "audio_channel_count": 2,
-                    "enable_word_time_offsets": True,
-                    "use_enhanced": True,
-                }
+    while True:
+        audio_data = q.get()
+        requests = [speech.StreamingRecognizeRequest(audio_content=audio_data)]
+        responses = client.streaming_recognize(streaming_config, requests)
 
-                audio = speech.RecognitionAudio(content=content)
-                response = client.recognize(config=config, audio=audio)
+        for response in responses:
+            for result in response.results:
+                transcript = result.alternatives[0].transcript
+                # 여기서 비속어 감지 로직을 구현합니다.
+                # 예시로 "example_profanity" 단어를 비속어로 가정하고 감지합니다.
+                if "example_profanity" in transcript:  # 실제 비속어 감지 로직으로 대체 필요
+                    start_time = result.alternatives[0].words[0].start_time.total_seconds() * 1000
+                    end_time = result.alternatives[0].words[-1].end_time.total_seconds() * 1000
+                    beep_duration = end_time - start_time
+                    beep = create_beep(beep_duration)
+                    # 여기서 삐음 소리를 오디오 스트림에 오버레이하는 로직을 구현해야 합니다.
+                    # 삐음 오버레이 로직 구현 필요
+                    print(f"Beep added from {start_time}ms to {end_time}ms for profanity.")
 
-                for result in response.results:
-                    alternative = result.alternatives[0]
-                    print(u"전사본: {}".format(alternative.transcript))
+# 방송 송출자의 broadcast_audio 이벤트 핸들러 수정
+@socketio.on('broadcast_audio', namespace='/broadcast')
+def broadcast_audio(data):
+    broadcast_id = data['broadcastId']
+    audio_data = data['audioData']
 
-                    detect_and_play_beep(socketio, alternative.transcript, profanity_list)
+    # 오디오 데이터를 저장할 큐 생성
+    q = queue.Queue()
 
-            except sr.UnknownValueError:
-                pass
-            except sr.RequestError as e:
-                print(f"음성인식 서비스에 오류가 있습니다: {e}")
-            except Exception as e:
-                print(f"에러가 발생했습니다: {e}")
+    # 두 개의 스레드 생성
+    t1 = threading.Thread(target=listen_and_transcribe, args=(socketio, broadcast_id, q))
+    t2 = threading.Thread(target=transcribe_and_check, args=(socketio, broadcast_id, q))
+
+    # 스레드 시작
+    t1.start()
+    t2.start()
+
+# 리스너의 listener_receive_audio 이벤트 핸들러
+@socketio.on('listener_receive_audio', namespace='/listener')
+def listener_receive_audio(data):
+    broadcast_id = data['broadcastId']
+    audio_data = data['audioData']
+
+    # 리스너의 오디오에서 듣기위해 있는 코드
+    socketio.emit('play_audio', {'broadcastId': broadcast_id, 'audioData': audio_data}, namespace='/listener', broadcast=True)
+
+
 
 # Flask 애플리케이션 라우트
 @app.route('/')
 def index():
-    broadcasts = [{'nickname': '', 'content': '', 'imagePath': ''} for _ in range(8)]  # 8개의 빈 데이터 생성
+    broadcasts = [{'nickname': '', 'content': '', 'imagePath': ''} for _ in range(8)]  # 메인화면 8개의 빈 데이터 생성
     return render_template('main.html', broadcasts=broadcasts)
 
 # Socket.IO 이벤트 핸들러
 @socketio.on('start_listening', namespace='/listener')
 def start_listening_event():
-    profanity_list = os.environ.get("PROFANITY_LIST").split(',')
     print("start_listening_event triggered")
-    threading.Thread(target=profanity_beep_listener, args=(socketio, profanity_list)).start()
+
+    # 오디오 데이터를 저장할 큐 생성
+    q = queue.Queue()
+
+    # 두 개의 스레드 생성
+    t1 = threading.Thread(target=listen_and_transcribe, args=(socketio, q))
+    t2 = threading.Thread(target=transcribe_and_check, args=(socketio, q))
+
+    # 스레드 시작
+    t1.start()
+    t2.start()
 
 # 방송 송출자 서버의 start_broadcast 이벤트 핸들러
 @socketio.on('start_broadcast', namespace='/broadcast')
@@ -380,7 +361,6 @@ def get_nickname_and_title():
     # 팝업에서 전송된 닉네임과 방송 제목을 반환
     return jsonify({'nickname': popup_nickname, 'title': popup_title})
 
-
 # 팝업에서 전송된 정보를 받아 저장하는 엔드포인트 추가
 @app.route('/save_popup_info', methods=['POST'])
 def save_popup_info():
@@ -389,30 +369,6 @@ def save_popup_info():
     popup_nickname = data.get('nickname', '')
     popup_title = data.get('title', '')
     return jsonify({'success': True})
-
-
-
-# 방송 송출자의 broadcast 이벤트 핸들러
-@socketio.on('broadcast_audio', namespace='/broadcast')
-def broadcast_audio(data):
-    broadcast_id = data['broadcastId']
-    audio_data = data['audioData']
-
-    # 방송 송출자의 audio_data를 받아 처리하는 로직을 추가
-    # 예: 서버에서 리스너에게 전달
-    socketio.emit('listener_receive_audio', {'broadcastId': broadcast_id, 'audioData': audio_data}, namespace='/listener', broadcast=True)
-
-# 리스너의 listener_receive_audio 이벤트 핸들러
-@socketio.on('listener_receive_audio', namespace='/listener')
-def listener_receive_audio(data):
-    broadcast_id = data['broadcastId']
-    audio_data = data['audioData']
-
-    # 리스너의 audio_data를 받아 처리하는 로직을 추가
-    # 예: 리스너에게 음성 데이터를 전달
-    socketio.emit('play_audio', {'broadcastId': broadcast_id, 'audioData': audio_data}, namespace='/listener', broadcast=True)
-
-
 
 # 방송 송출자 서버의 chat_message 이벤트 핸들러
 @socketio.on('chat_message', namespace='/broadcast')
@@ -427,6 +383,10 @@ def broadcast_end():
     # 메인 화면으로 이동
     return redirect("/")
 
+# 스트리밍 시그널
+@socketio.on('webrtc_signal')
+def handle_webrtc_signal(message):
+    emit('webrtc_signal', message, broadcast=True, include_self=False)
 
 # 서버 실행
 if __name__ == '__main__':

@@ -240,7 +240,7 @@ document.getElementById('startBroadcastButton').addEventListener('click', functi
                 document.getElementById('broadcastUrlElement').textContent = data.broadcastUrl;
 
                 // 서버로 Socket.IO 이벤트를 통해 방송 시작 데이터 전송
-                broSocket.emit('start_broadcast', {
+                mySocket.emit('start_broadcast', {
                     broadcastId: data.broadcastId,
                     nickname: nickname,
                     content: broadcastContent,

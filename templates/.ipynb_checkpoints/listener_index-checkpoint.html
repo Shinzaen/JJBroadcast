@@ -1,0 +1,80 @@
+<!--listener_index.html-->
+
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <link rel="stylesheet" type="text/css" href="/static/listener_styles.css">
+    <!--<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />-->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+    <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
+    <script src="/static/listener_script.js"></script>
+
+    <title>청취자 방송 화면</title>
+
+</head>
+
+<body>
+
+    <header>
+        <a href="main.html"> <!-- 로고 클릭 시 main.html로 이동 -->
+            <img id="icon" src="static/꾀꼬리로고.png" alt="로고" onclick="refreshPage()">
+        </a>
+        <h1> JJ Broadcast </h1>
+        <button id="endButton" onclick="showPopup()">
+            <img src="static/end.png" alt="방송 종료">
+        </button>
+    </header>
+
+    <div id="body">
+
+        <div id="player">
+            <div class="album" id="albumImageContainer">
+                <div class="heart"><i class="fas fa-heart"></i></div>
+
+                <!-- 청취자 페이지에 이미지 표시 엘리먼트 -->
+                <img id="listener_previewImage" src="{{ url_for('uploaded_file', filename=broadcast.imagePath) }}"
+                    alt="Broadcast Image">
+
+                <div class="info">
+                    <div id="timerContainer" class="progress-bar">
+                        <div class="fill"></div>
+                        <span id="timer">방송시간: <span id="broadcastTime">00:00:00</span></span>
+                    </div>
+                    <div id="broadcastInfo1" class="currently-playing">
+                        <!-- 방송 정보 표시 -->
+                        <h2 class="titlename" id="broadcastContent"></h2>
+                        <h3 class="artist-name" id="broadcastNickname"></h3>
+                    </div>
+                    <!-- 음성 출력을 위한 오디오 태그 -->
+                    <audio id="audioPlayer" controls></audio>
+
+                </div>
+            </div>
+        </div>
+
+
+        <div id="chatContainer"></div>
+
+        <div id="inputContainer">
+            <input type="text" id="nickInput" placeholder="닉네임 입력">
+            <input type="text" id="chatInput" placeholder="채팅 입력" onkeydown="handleKeyPress(event)">
+        </div>
+
+        <button id="sendButton" onclick="sendMessage()">전송</button>
+    </div>
+
+    <footer>
+        <p>made by J & J ♡ </p>
+    </footer>
+    <!--방송 URL을 표시할 엘리먼트 추가 -->
+    <div id="broadcastUrlElement"></div>
+
+
+</body>
+
+</html>
